@@ -24,7 +24,8 @@ async function generateOne(
         input: {
           prompt,
           num_outputs: 1,
-          aspect_ratio: "3:4",
+          width: 768,
+          height: 1000,
           output_format: "png",
           output_quality: 100,
         },
