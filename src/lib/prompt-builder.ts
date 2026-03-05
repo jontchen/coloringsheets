@@ -1,5 +1,6 @@
 import { SheetConfig } from "@/types";
 import { STYLES } from "@/data/styles";
+import { generateSceneDescription } from "@/lib/scene-randomizer";
 
 const STYLE_PROMPTS: Record<string, string> = {
   simple:
@@ -17,12 +18,13 @@ const STYLE_PROMPTS: Record<string, string> = {
 };
 
 export function buildPrompt(config: SheetConfig): string {
-  const style = STYLES.find((s) => s.id === config.style);
   const styleInstruction = STYLE_PROMPTS[config.style] || "";
 
-  const subject = config.additionalDetails.trim()
+  // If user provided details, use those directly. Otherwise, auto-generate a fun scene.
+  const hasUserDetails = config.additionalDetails.trim().length > 0;
+  const subject = hasUserDetails
     ? `${config.topic.subcategory}: ${config.additionalDetails.trim()}`
-    : config.topic.subcategory;
+    : generateSceneDescription(config.topic.subcategory);
 
   return [
     `Create a full-page black and white coloring page of ${subject}.`,
