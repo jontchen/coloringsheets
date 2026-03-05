@@ -12,6 +12,10 @@ import TopicSelector from "@/components/TopicSelector";
 import AdditionalInput from "@/components/AdditionalInput";
 import PreviewGrid from "@/components/PreviewGrid";
 import DownloadOptions from "@/components/DownloadOptions";
+import DebugPanel, { buildDebugInfo } from "@/components/DebugPanel";
+
+// DEV_MODE: set to false before going to market
+const DEV_MODE = true;
 
 const DEFAULT_CONFIG: SheetConfig = {
   pageSize: "letter",
@@ -27,6 +31,7 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<ReturnType<typeof buildDebugInfo> | null>(null);
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -35,11 +40,12 @@ export default function Home() {
     setResults([]);
     setSelectedId(null);
 
+    const startTime = Date.now();
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config, count: 2 }),
+        body: JSON.stringify({ config }),
       });
 
       const data = await response.json();
@@ -51,6 +57,12 @@ export default function Home() {
       setResults(data.results);
       if (data.results.length > 0) {
         setSelectedId(data.results[0].id);
+      }
+
+      if (DEV_MODE) {
+        setDebugInfo(
+          buildDebugInfo(data.prompt, data.results.length, Date.now() - startTime)
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -162,6 +174,8 @@ export default function Home() {
                 Back to Edit
               </button>
             )}
+
+            {DEV_MODE && <DebugPanel info={debugInfo} />}
           </div>
         )}
 
@@ -190,6 +204,8 @@ export default function Home() {
                 Create Another
               </button>
             </div>
+
+            {DEV_MODE && <DebugPanel info={debugInfo} />}
           </div>
         )}
       </main>
