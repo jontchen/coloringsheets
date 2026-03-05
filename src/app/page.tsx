@@ -1,64 +1,202 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import {
+  SheetConfig,
+  GenerationResult,
+  WizardStep,
+} from "@/types";
+import StepIndicator from "@/components/StepIndicator";
+import PageSizeSelector from "@/components/PageSizeSelector";
+import StyleSelector from "@/components/StyleSelector";
+import TopicSelector from "@/components/TopicSelector";
+import AdditionalInput from "@/components/AdditionalInput";
+import PreviewGrid from "@/components/PreviewGrid";
+import DownloadOptions from "@/components/DownloadOptions";
+
+const DEFAULT_CONFIG: SheetConfig = {
+  pageSize: "letter",
+  style: "simple",
+  topic: { category: "animals", subcategory: "Farm Animals" },
+  additionalDetails: "",
+};
 
 export default function Home() {
+  const [step, setStep] = useState<WizardStep>("configure");
+  const [config, setConfig] = useState<SheetConfig>(DEFAULT_CONFIG);
+  const [results, setResults] = useState<GenerationResult[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    setError(null);
+    setStep("preview");
+    setResults([]);
+    setSelectedId(null);
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config, count: 2 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Generation failed");
+      }
+
+      setResults(data.results);
+      if (data.results.length > 0) {
+        setSelectedId(data.results[0].id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerate = () => {
+    handleGenerate();
+  };
+
+  const selectedResult = results.find((r) => r.id === selectedId);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen font-sans">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white py-6 px-4 shadow-lg">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+            Coloring Sheet Generator
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-violet-100 mt-1 text-sm">
+            Design, preview, and print beautiful coloring pages
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        <StepIndicator currentStep={step} />
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-red-600 text-sm">
+            <strong>Error:</strong> {error}
+            <button
+              onClick={() => setError(null)}
+              className="ml-3 text-red-400 hover:text-red-600 font-bold"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Step 1: Configure */}
+        {step === "configure" && (
+          <div className="space-y-8">
+            <PageSizeSelector
+              value={config.pageSize}
+              onChange={(pageSize) => setConfig({ ...config, pageSize })}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            <StyleSelector
+              value={config.style}
+              onChange={(style) => setConfig({ ...config, style })}
+            />
+            <TopicSelector
+              value={config.topic}
+              onChange={(topic) => setConfig({ ...config, topic })}
+            />
+            <AdditionalInput
+              value={config.additionalDetails}
+              onChange={(additionalDetails) =>
+                setConfig({ ...config, additionalDetails })
+              }
+            />
+            <button
+              onClick={handleGenerate}
+              className="w-full py-4 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-black text-lg rounded-2xl shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Generate Coloring Sheets
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Preview */}
+        {step === "preview" && (
+          <div className="space-y-6">
+            <PreviewGrid
+              results={results}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              isLoading={isLoading}
+            />
+
+            {!isLoading && results.length > 0 && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep("configure")}
+                  className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-2xl transition-colors"
+                >
+                  Back to Edit
+                </button>
+                <button
+                  onClick={handleRegenerate}
+                  className="flex-1 py-3 px-6 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-2xl transition-colors"
+                >
+                  Regenerate
+                </button>
+                <button
+                  onClick={() => selectedId && setStep("download")}
+                  disabled={!selectedId}
+                  className="flex-1 py-3 px-6 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 disabled:opacity-50 text-white font-bold rounded-2xl transition-all"
+                >
+                  Download
+                </button>
+              </div>
+            )}
+
+            {!isLoading && error && (
+              <button
+                onClick={() => setStep("configure")}
+                className="w-full py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-2xl transition-colors"
+              >
+                Back to Edit
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Download */}
+        {step === "download" && selectedResult && (
+          <div className="space-y-6">
+            <DownloadOptions
+              result={selectedResult}
+              pageSize={config.pageSize}
+            />
+            <div className="flex gap-3 max-w-sm mx-auto">
+              <button
+                onClick={() => setStep("preview")}
+                className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-2xl transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => {
+                  setStep("configure");
+                  setResults([]);
+                  setSelectedId(null);
+                }}
+                className="flex-1 py-3 px-6 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-bold rounded-2xl transition-all"
+              >
+                Create Another
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
