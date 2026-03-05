@@ -3,6 +3,15 @@ import { getReplicateClient } from "@/lib/replicate";
 import { buildPrompt } from "@/lib/prompt-builder";
 import { SheetConfig } from "@/types";
 
+async function fetchImageAsDataUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch generated image");
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  const mimeType = response.headers.get("content-type") || "image/png";
+  return `data:${mimeType};base64,${base64}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { config, count = 2 } = (await request.json()) as {
@@ -33,9 +42,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Flux returns an array of file URLs
         const urls = output as unknown as string[];
-        const imageUrl = urls?.[0] ?? "";
+        const replicateUrl = urls?.[0] ?? "";
+
+        // Convert to data URL server-side to avoid CORS issues
+        const imageUrl = replicateUrl
+          ? await fetchImageAsDataUrl(replicateUrl)
+          : "";
 
         return {
           id: `variation-${i}-${Date.now()}`,

@@ -7,7 +7,6 @@ import {
   WizardStep,
 } from "@/types";
 import StepIndicator from "@/components/StepIndicator";
-import PageSizeSelector from "@/components/PageSizeSelector";
 import StyleSelector from "@/components/StyleSelector";
 import TopicSelector from "@/components/TopicSelector";
 import AdditionalInput from "@/components/AdditionalInput";
@@ -98,10 +97,6 @@ export default function Home() {
         {/* Step 1: Configure */}
         {step === "configure" && (
           <div className="space-y-8">
-            <PageSizeSelector
-              value={config.pageSize}
-              onChange={(pageSize) => setConfig({ ...config, pageSize })}
-            />
             <StyleSelector
               value={config.style}
               onChange={(style) => setConfig({ ...config, style })}

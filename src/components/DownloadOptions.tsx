@@ -9,8 +9,46 @@ interface DownloadOptionsProps {
   pageSize: PageSize;
 }
 
-function proxyUrl(imageUrl: string): string {
-  return `/api/download?url=${encodeURIComponent(imageUrl)}`;
+// 8.5 x 11 inches at 300 DPI
+const TARGET_WIDTH = 2550;
+const TARGET_HEIGHT = 3300;
+
+function fitImageToPage(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = TARGET_WIDTH;
+      canvas.height = TARGET_HEIGHT;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+
+      // Fill white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+
+      // Calculate cover crop (fill entire page, crop overflow)
+      const srcRatio = img.width / img.height;
+      const dstRatio = TARGET_WIDTH / TARGET_HEIGHT;
+
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (srcRatio > dstRatio) {
+        // Source is wider — crop sides
+        sw = img.height * dstRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        // Source is taller — crop top/bottom
+        sh = img.width / dstRatio;
+        sy = (img.height - sh) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = dataUrl;
+  });
 }
 
 export default function DownloadOptions({
@@ -25,8 +63,8 @@ export default function DownloadOptions({
     setDownloadingPng(true);
     setError(null);
     try {
-      const response = await fetch(proxyUrl(result.imageUrl));
-      if (!response.ok) throw new Error("Failed to download image");
+      const fitted = await fitImageToPage(result.imageUrl);
+      const response = await fetch(fitted);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -47,8 +85,8 @@ export default function DownloadOptions({
     setDownloadingPdf(true);
     setError(null);
     try {
-      const proxied = proxyUrl(result.imageUrl);
-      const blob = await generatePDF(proxied, pageSize);
+      const fitted = await fitImageToPage(result.imageUrl);
+      const blob = await generatePDF(fitted, pageSize);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
