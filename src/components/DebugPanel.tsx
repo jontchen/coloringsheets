@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { GenerationParams } from "@/types";
 
 interface DebugInfo {
   prompt: string;
-  imageCount: number;
+  params: GenerationParams;
   costPerImage: number;
   totalCost: number;
   durationMs: number;
@@ -18,14 +19,14 @@ const COST_PER_IMAGE = 0.003;
 
 export function buildDebugInfo(
   prompt: string,
-  imageCount: number,
+  params: GenerationParams,
   durationMs: number
 ): DebugInfo {
   return {
     prompt,
-    imageCount,
+    params,
     costPerImage: COST_PER_IMAGE,
-    totalCost: imageCount * COST_PER_IMAGE,
+    totalCost: params.imageCount * COST_PER_IMAGE,
     durationMs,
   };
 }
@@ -35,6 +36,9 @@ export default function DebugPanel({ info }: DebugPanelProps) {
 
   if (!info) return null;
 
+  const { params } = info;
+  const megapixels = ((params.width * params.height) / 1_000_000).toFixed(2);
+
   return (
     <div className="mt-6 border-2 border-dashed border-amber-400 bg-amber-50 rounded-2xl overflow-hidden">
       <button
@@ -42,7 +46,7 @@ export default function DebugPanel({ info }: DebugPanelProps) {
         className="w-full px-4 py-3 flex items-center justify-between text-left"
       >
         <span className="text-sm font-bold text-amber-700">
-          DEV DEBUG — Est. Cost: ${info.totalCost.toFixed(4)} | {(info.durationMs / 1000).toFixed(1)}s | {info.imageCount} image(s)
+          DEV DEBUG — ${info.totalCost.toFixed(4)} | {(info.durationMs / 1000).toFixed(1)}s | {params.imageCount} image(s) | {params.width}x{params.height}
         </span>
         <span className="text-amber-500 text-xs font-bold">
           {expanded ? "COLLAPSE" : "EXPAND"}
@@ -53,19 +57,23 @@ export default function DebugPanel({ info }: DebugPanelProps) {
           <div>
             <div className="text-xs font-bold text-amber-600 mb-1">COST BREAKDOWN</div>
             <div className="text-xs text-amber-800 font-mono bg-amber-100 p-2 rounded-lg">
-              {info.imageCount} images x ${info.costPerImage.toFixed(4)}/image = ${info.totalCost.toFixed(4)}
+              {params.imageCount} images x ${info.costPerImage.toFixed(4)}/image = ${info.totalCost.toFixed(4)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-amber-600 mb-1">GENERATION PARAMETERS</div>
+            <div className="text-xs text-amber-800 font-mono bg-amber-100 p-3 rounded-lg space-y-1">
+              <div><span className="text-amber-600">model:</span> {params.model}</div>
+              <div><span className="text-amber-600">dimensions:</span> {params.width} x {params.height} ({megapixels} MP)</div>
+              <div><span className="text-amber-600">format:</span> {params.outputFormat.toUpperCase()} @ quality {params.outputQuality}</div>
+              <div><span className="text-amber-600">images:</span> {params.imageCount}</div>
+              <div><span className="text-amber-600">duration:</span> {(info.durationMs / 1000).toFixed(1)}s total ({(info.durationMs / 1000 / params.imageCount).toFixed(1)}s/image)</div>
             </div>
           </div>
           <div>
             <div className="text-xs font-bold text-amber-600 mb-1">PROMPT SENT TO AI</div>
             <div className="text-xs text-amber-800 font-mono bg-amber-100 p-3 rounded-lg whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
               {info.prompt}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-bold text-amber-600 mb-1">MODEL</div>
-            <div className="text-xs text-amber-800 font-mono bg-amber-100 p-2 rounded-lg">
-              black-forest-labs/flux-schnell via Replicate
             </div>
           </div>
         </div>

@@ -1,12 +1,13 @@
 "use client";
 
-import { GenerationResult } from "@/types";
+import { GenerationResult, Orientation } from "@/types";
 
 interface PreviewGridProps {
   results: GenerationResult[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   isLoading: boolean;
+  orientation: Orientation;
 }
 
 export default function PreviewGrid({
@@ -14,7 +15,9 @@ export default function PreviewGrid({
   selectedId,
   onSelect,
   isLoading,
+  orientation,
 }: PreviewGridProps) {
+  const aspect = orientation === "portrait" ? "aspect-[8.5/11]" : "aspect-[11/8.5]";
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
@@ -56,7 +59,7 @@ export default function PreviewGrid({
             <img
               src={result.imageUrl}
               alt="Coloring sheet variation"
-              className="w-full aspect-[8.5/11] object-cover bg-white"
+              className={`w-full ${aspect} object-cover bg-white`}
             />
           </button>
         ))}

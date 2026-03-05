@@ -7,6 +7,7 @@ import {
   WizardStep,
 } from "@/types";
 import StepIndicator from "@/components/StepIndicator";
+import OrientationSelector from "@/components/OrientationSelector";
 import StyleSelector from "@/components/StyleSelector";
 import TopicSelector from "@/components/TopicSelector";
 import AdditionalInput from "@/components/AdditionalInput";
@@ -19,6 +20,7 @@ const DEV_MODE = true;
 
 const DEFAULT_CONFIG: SheetConfig = {
   pageSize: "letter",
+  orientation: "portrait",
   style: "simple",
   topic: { category: "animals", subcategory: "Farm Animals" },
   additionalDetails: "",
@@ -59,9 +61,9 @@ export default function Home() {
         setSelectedId(data.results[0].id);
       }
 
-      if (DEV_MODE) {
+      if (DEV_MODE && data.params) {
         setDebugInfo(
-          buildDebugInfo(data.prompt, data.results.length, Date.now() - startTime)
+          buildDebugInfo(data.prompt, data.params, Date.now() - startTime)
         );
       }
     } catch (err) {
@@ -109,6 +111,10 @@ export default function Home() {
         {/* Step 1: Configure */}
         {step === "configure" && (
           <div className="space-y-8">
+            <OrientationSelector
+              value={config.orientation}
+              onChange={(orientation) => setConfig({ ...config, orientation })}
+            />
             <StyleSelector
               value={config.style}
               onChange={(style) => setConfig({ ...config, style })}
@@ -140,6 +146,7 @@ export default function Home() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               isLoading={isLoading}
+              orientation={config.orientation}
             />
 
             {!isLoading && results.length > 0 && (
@@ -184,7 +191,7 @@ export default function Home() {
           <div className="space-y-6">
             <DownloadOptions
               result={selectedResult}
-              pageSize={config.pageSize}
+              orientation={config.orientation}
             />
             <div className="flex gap-3 max-w-sm mx-auto">
               <button

@@ -1,49 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { GenerationResult, PageSize } from "@/types";
+import { GenerationResult, Orientation } from "@/types";
 import { generatePDF } from "@/lib/pdf-generator";
 
 interface DownloadOptionsProps {
   result: GenerationResult;
-  pageSize: PageSize;
+  orientation: Orientation;
 }
 
 // 8.5 x 11 inches at 300 DPI
-const TARGET_WIDTH = 2550;
-const TARGET_HEIGHT = 3300;
+const TARGETS = {
+  portrait: { width: 2550, height: 3300 },
+  landscape: { width: 3300, height: 2550 },
+};
 
-function fitImageToPage(dataUrl: string): Promise<string> {
+function fitImageToPage(dataUrl: string, orientation: Orientation): Promise<string> {
+  const target = TARGETS[orientation];
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = TARGET_WIDTH;
-      canvas.height = TARGET_HEIGHT;
+      canvas.width = target.width;
+      canvas.height = target.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas not supported"));
 
-      // Fill white background
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+      ctx.fillRect(0, 0, target.width, target.height);
 
-      // Calculate cover crop (fill entire page, crop overflow)
       const srcRatio = img.width / img.height;
-      const dstRatio = TARGET_WIDTH / TARGET_HEIGHT;
+      const dstRatio = target.width / target.height;
 
       let sx = 0, sy = 0, sw = img.width, sh = img.height;
       if (srcRatio > dstRatio) {
-        // Source is wider — crop sides
         sw = img.height * dstRatio;
         sx = (img.width - sw) / 2;
       } else {
-        // Source is taller — crop top/bottom
         sh = img.width / dstRatio;
         sy = (img.height - sh) / 2;
       }
 
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
-
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, target.width, target.height);
       resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = () => reject(new Error("Failed to load image"));
@@ -53,7 +51,7 @@ function fitImageToPage(dataUrl: string): Promise<string> {
 
 export default function DownloadOptions({
   result,
-  pageSize,
+  orientation,
 }: DownloadOptionsProps) {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingPng, setDownloadingPng] = useState(false);
@@ -63,7 +61,7 @@ export default function DownloadOptions({
     setDownloadingPng(true);
     setError(null);
     try {
-      const fitted = await fitImageToPage(result.imageUrl);
+      const fitted = await fitImageToPage(result.imageUrl, orientation);
       const response = await fetch(fitted);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -85,8 +83,8 @@ export default function DownloadOptions({
     setDownloadingPdf(true);
     setError(null);
     try {
-      const fitted = await fitImageToPage(result.imageUrl);
-      const blob = await generatePDF(fitted, pageSize);
+      const fitted = await fitImageToPage(result.imageUrl, orientation);
+      const blob = await generatePDF(fitted, orientation);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -102,6 +100,8 @@ export default function DownloadOptions({
     }
   };
 
+  const aspect = orientation === "portrait" ? "aspect-[8.5/11]" : "aspect-[11/8.5]";
+
   return (
     <div className="flex flex-col items-center gap-6">
       <h3 className="text-xl font-bold text-gray-700">
@@ -113,7 +113,7 @@ export default function DownloadOptions({
         <img
           src={result.imageUrl}
           alt="Your coloring sheet"
-          className="w-full aspect-[8.5/11] object-cover bg-white"
+          className={`w-full ${aspect} object-cover bg-white`}
         />
       </div>
 
