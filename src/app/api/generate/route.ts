@@ -66,9 +66,19 @@ async function generateOne(
 
 export async function POST(request: NextRequest) {
   try {
-    const { config } = (await request.json()) as {
+    const { config, accessCode } = (await request.json()) as {
       config: SheetConfig;
+      accessCode?: string;
     };
+
+    // Verify access code if one is configured
+    const requiredCode = process.env.ACCESS_CODE;
+    if (requiredCode && accessCode !== requiredCode) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return NextResponse.json(

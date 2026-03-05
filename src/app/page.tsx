@@ -14,6 +14,7 @@ import AdditionalInput from "@/components/AdditionalInput";
 import PreviewGrid from "@/components/PreviewGrid";
 import DownloadOptions from "@/components/DownloadOptions";
 import DebugPanel, { buildDebugInfo } from "@/components/DebugPanel";
+import AccessGate from "@/components/AccessGate";
 
 // DEV_MODE: set to false before going to market
 const DEV_MODE = true;
@@ -47,7 +48,10 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config }),
+        body: JSON.stringify({
+          config,
+          accessCode: sessionStorage.getItem("coloring-access-token") || "",
+        }),
       });
 
       const data = await response.json();
@@ -80,6 +84,7 @@ export default function Home() {
   const selectedResult = results.find((r) => r.id === selectedId);
 
   return (
+    <AccessGate>
     <div className="min-h-screen font-sans">
       {/* Header */}
       <header className="bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white py-6 px-4 shadow-lg">
@@ -217,5 +222,6 @@ export default function Home() {
         )}
       </main>
     </div>
+    </AccessGate>
   );
 }
